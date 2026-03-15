@@ -1,9 +1,8 @@
 # OOP112Project_Game
 This is the repository of the JAVA Game: Tavern Quest, DnD: Chess, and Coins &amp; Poker
+---
 
 ## **Game Descriptions**
-
----
 
 *Tavern Quest*<br>
 - Tavern Quuest is a RPG games that focuses on dungeon crawling, farming, hunting, looting and selling.<br>
