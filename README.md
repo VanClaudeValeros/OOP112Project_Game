@@ -5,7 +5,7 @@ This is the repository of the JAVA Game: Tavern Quest, DnD: Chess, and Coins &am
 ## **Game Descriptions**
 
 *Tavern Quest*<br>
-- Tavern Quuest is a RPG games that focuses on dungeon crawling, farming, hunting, looting and selling.<br>
+- Tavern Quest is a RPG games that focuses on dungeon crawling, farming, hunting, looting and selling.<br>
 
 *DnD: Chess*<br>
 - Dnd Chess is a chess game where every piece has different classes based on the reference of DnD &amp; Fire Emblem.<br>
