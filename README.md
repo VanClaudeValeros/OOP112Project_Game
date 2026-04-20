@@ -40,7 +40,7 @@ The goal is to defeat the opponent or survive longer by effectively combining sl
 
 ## Potential Enhancements
 - AI opponent with adaptive behavior  
-- Multiplayer mode  
+- Multiplayer mode (Soon ☺)
 - Expanded card sets with unique abilities  
 - Graphical User Interface (GUI)  
 - Sound effects and animations for improved immersion  
