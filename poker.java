@@ -1,8 +1,7 @@
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.util.*;
 import java.util.List;
 import javax.imageio.ImageIO;
 import javax.sound.sampled.*;
@@ -10,29 +9,34 @@ import javax.sound.sampled.*;
 public class poker extends JFrame {
     private int balance = 100;
     private int currentBet = 0;
+    private int winMultiplier = 1;
     private List<Card> deck;
     private List<Card> playerHand;
     private List<Card> dealerHand;
     private boolean playerTurn = false;
     private boolean gameOver = true;
-    private String message = "Place a bet or press Deal!";
+    private String message = "Spin the Slot or Place a Bet!";
+    private String slotMessage = "Ready to Spin!";
 
     private GamePanel gamePanel;
-    private JButton btnPlaceBet, btnDeal, btnHit, btnStand;
+    private JButton btnPlaceBet, btnDeal, btnHit, btnStand, btnSpinSlot;
     private JTextField txtBetAmount;
 
-    // --- SPRITE ASSETS ---
+    // --- MULTIMEDIA CACHE ---
+    private static Map<String, Image> imageCache = new HashMap<>();
     private Image tableBgSprite;
     private Image cardBackSprite;
+    private String[] slotReels = {"🍒", "🔔", "💎"}; // Simple emojis if sprites missing
+    private String[] currentSlotResult = {"?", "?", "?"};
 
     public poker() {
-        setTitle("Coins & Poker: Multimedia Edition");
-        setSize(900, 600);
+        setTitle("Coins & Poker: Multimedia Hybrid Edition");
+        setSize(1000, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
         setResizable(true);
 
-        loadGlobalSprites(); // Try to load global images
+        loadGlobalSprites();
 
         deck = new ArrayList<>();
         playerHand = new ArrayList<>();
@@ -49,7 +53,8 @@ public class poker extends JFrame {
         txtBetAmount = new JTextField(4);
 
         btnPlaceBet = new JButton("Place Bet");
-        btnDeal = new JButton("Deal");
+        btnSpinSlot = new JButton("Spin Slot ($5)");
+        btnDeal = new JButton("Deal / Play");
         btnHit = new JButton("Hit");
         btnStand = new JButton("Stand");
 
@@ -59,6 +64,7 @@ public class poker extends JFrame {
         controlPanel.add(lblBet);
         controlPanel.add(txtBetAmount);
         controlPanel.add(btnPlaceBet);
+        controlPanel.add(btnSpinSlot);
         controlPanel.add(btnDeal);
         controlPanel.add(btnHit);
         controlPanel.add(btnStand);
@@ -67,35 +73,75 @@ public class poker extends JFrame {
 
         btnPlaceBet.addActionListener(e -> placeCustomBet());
         txtBetAmount.addActionListener(e -> placeCustomBet());
+        btnSpinSlot.addActionListener(e -> spinSlot());
         btnDeal.addActionListener(e -> attemptDeal());
         btnHit.addActionListener(e -> hit());
         btnStand.addActionListener(e -> stand());
     }
 
-    // --- MULTIMEDIA SYSTEM: SOUND ---
-    // Make sure your sound files are .wav format and in an "assets" folder!
     private void playSound(String fileName) {
+        new Thread(() -> {
+            try {
+                File soundFile = new File("assets/" + fileName);
+                if (soundFile.exists()) {
+                    AudioInputStream audioIn = AudioSystem.getAudioInputStream(soundFile);
+                    Clip clip = AudioSystem.getClip();
+                    clip.open(audioIn);
+                    clip.start();
+                    clip.addLineListener(event -> {
+                        if (event.getType() == LineEvent.Type.STOP) {
+                            clip.close();
+                        }
+                    });
+                }
+            } catch (Exception e) {}
+        }).start();
+    }
+
+    private Image getImage(String path) {
+        if (imageCache.containsKey(path)) return imageCache.get(path);
         try {
-            File soundFile = new File("assets/" + fileName);
-            if (soundFile.exists()) {
-                AudioInputStream audioIn = AudioSystem.getAudioInputStream(soundFile);
-                Clip clip = AudioSystem.getClip();
-                clip.open(audioIn);
-                clip.start();
-            }
+            Image img = ImageIO.read(new File(path));
+            imageCache.put(path, img);
+            return img;
         } catch (Exception e) {
-            // Fails silently if sound is missing
+            return null;
         }
     }
 
-    // --- MULTIMEDIA SYSTEM: GLOBAL SPRITES ---
     private void loadGlobalSprites() {
-        try {
-            tableBgSprite = ImageIO.read(new File("assets/table_bg.png"));
-            cardBackSprite = ImageIO.read(new File("assets/card_back.png"));
-        } catch (Exception e) {
-            // Fails silently, uses solid colors instead
+        tableBgSprite = getImage("assets/table_bg.png");
+        cardBackSprite = getImage("assets/card_back.png");
+    }
+
+    private void spinSlot() {
+        if (!gameOver) return;
+        if (balance < 5) {
+            slotMessage = "Not enough for Slot!";
+            gamePanel.repaint();
+            return;
         }
+        balance -= 5;
+        playSound("coin.wav");
+
+        Random rand = new Random();
+        for (int i = 0; i < 3; i++) {
+            currentSlotResult[i] = slotReels[rand.nextInt(slotReels.length)];
+        }
+
+        if (currentSlotResult[0].equals(currentSlotResult[1]) && currentSlotResult[1].equals(currentSlotResult[2])) {
+            winMultiplier = 3;
+            slotMessage = "JACKPOT! 3x Multiplier!";
+            playSound("win.wav");
+        } else if (currentSlotResult[0].equals(currentSlotResult[1]) || currentSlotResult[1].equals(currentSlotResult[2]) || currentSlotResult[0].equals(currentSlotResult[2])) {
+            winMultiplier = 2;
+            slotMessage = "MATCH! 2x Multiplier!";
+            playSound("coin.wav");
+        } else {
+            winMultiplier = 1;
+            slotMessage = "No Match. 1x Multiplier.";
+        }
+        gamePanel.repaint();
     }
 
     private void placeCustomBet() {
@@ -105,9 +151,9 @@ public class poker extends JFrame {
             if (bet > 0 && balance >= bet) {
                 balance -= bet;
                 currentBet += bet;
-                message = "Bet: $" + currentBet + ". Press Deal!";
+                message = "Bet: $" + currentBet + ". Ready?";
                 txtBetAmount.setText("");
-                playSound("coin.wav"); // Trigger coin sound!
+                playSound("coin.wav");
                 gamePanel.repaint();
             } else {
                 message = "Invalid or insufficient funds.";
@@ -125,14 +171,22 @@ public class poker extends JFrame {
             if (balance >= 10) {
                 balance -= 10;
                 currentBet = 10;
-                playSound("coin.wav"); // Trigger coin sound!
+                playSound("coin.wav");
             } else {
-                message = "Not enough money!";
+                message = "Not enough money! Restart?";
+                if (balance <= 0 && currentBet <= 0) restartGame();
                 gamePanel.repaint();
                 return;
             }
         }
         startNewHand();
+    }
+
+    private void restartGame() {
+        balance = 100;
+        currentBet = 0;
+        winMultiplier = 1;
+        message = "Game Restarted! $100 added.";
     }
 
     private void initializeDeck() {
@@ -157,7 +211,7 @@ public class poker extends JFrame {
         playerHand.clear();
         dealerHand.clear();
 
-        playSound("shuffle.wav"); // Trigger shuffle sound!
+        playSound("shuffle.wav");
 
         playerHand.add(drawCard());
         dealerHand.add(drawCard());
@@ -166,10 +220,11 @@ public class poker extends JFrame {
 
         playerTurn = true;
         gameOver = false;
-        message = "Hit or Stand?";
+        message = "Hit or Stand? (x" + winMultiplier + " active)";
 
         btnPlaceBet.setEnabled(false);
         txtBetAmount.setEnabled(false);
+        btnSpinSlot.setEnabled(false);
         btnDeal.setEnabled(false);
         btnHit.setEnabled(true);
         btnStand.setEnabled(true);
@@ -179,7 +234,7 @@ public class poker extends JFrame {
     }
 
     private Card drawCard() {
-        playSound("deal_card.wav"); // Sound for every card drawn
+        playSound("deal_card.wav");
         return deck.remove(deck.size() - 1);
     }
 
@@ -191,7 +246,7 @@ public class poker extends JFrame {
             message = "Bust! You lose.";
             endGame(false);
         } else if (playerTotal == 21) {
-            message = "21! You automatically win!";
+            message = "21! Multiplier Applied!";
             endGame(true);
         }
         gamePanel.repaint();
@@ -199,19 +254,15 @@ public class poker extends JFrame {
 
     private void stand() {
         playerTurn = false;
-
         while (getHandValue(dealerHand) < 17 && !gameOver) {
             dealerHand.add(drawCard());
-            int dealerTotal = getHandValue(dealerHand);
-
-            if (dealerTotal == 21) {
+            if (getHandValue(dealerHand) == 21) {
                 message = "Dealer hits 21! Dealer Wins!";
                 endGame(false);
                 gamePanel.repaint();
                 return;
             }
         }
-
         if (!gameOver) determineWinner();
         gamePanel.repaint();
     }
@@ -221,15 +272,15 @@ public class poker extends JFrame {
         int dealerTotal = getHandValue(dealerHand);
 
         if (playerTotal == 21 && dealerTotal == 21) {
-            message = "Double 21! It's a Push (Tie).";
+            message = "Double 21! Push.";
             balance += currentBet;
             endGame(false);
         } else if (playerTotal == 21) {
-            message = "Dealt 21! You automatically win!";
+            message = "Blackjack! Win x" + winMultiplier + "!";
             endGame(true);
         } else if (dealerTotal == 21) {
             playerTurn = false;
-            message = "Dealer dealt 21! You lose.";
+            message = "Dealer Blackjack! Lose.";
             endGame(false);
         }
     }
@@ -239,12 +290,12 @@ public class poker extends JFrame {
         int dealerTotal = getHandValue(dealerHand);
 
         if (dealerTotal > 21 || playerTotal > dealerTotal) {
-            message = "You Win!";
+            message = "You Win! x" + winMultiplier + "!";
             endGame(true);
         } else if (playerTotal == dealerTotal) {
             message = "Push (Tie).";
             balance += currentBet;
-            endGame(false); // Push doesn't trigger win sound
+            endGame(false);
         } else {
             message = "Dealer Wins!";
             endGame(false);
@@ -253,17 +304,20 @@ public class poker extends JFrame {
 
     private void endGame(boolean playerWon) {
         if (playerWon) {
-            balance += (currentBet * 2);
-            playSound("win.wav"); // Trigger Win Sound!
-        } else if (message.contains("lose") || message.contains("Bust") || message.contains("Dealer Wins")) {
-            playSound("lose.wav"); // Trigger Lose Sound!
+            balance += (currentBet * (1 + winMultiplier));
+            playSound("win.wav");
+        } else if (message.contains("lose") || message.contains("Bust") || message.contains("Dealer Wins") || message.contains("Lose")) {
+            playSound("lose.wav");
         }
 
         currentBet = 0;
+        winMultiplier = 1; // Reset multiplier
         gameOver = true;
+        slotMessage = "Ready to Spin!";
 
         btnPlaceBet.setEnabled(true);
         txtBetAmount.setEnabled(true);
+        btnSpinSlot.setEnabled(true);
         btnDeal.setEnabled(true);
         btnHit.setEnabled(false);
         btnStand.setEnabled(false);
@@ -284,8 +338,8 @@ public class poker extends JFrame {
     }
 
     private class GamePanel extends JPanel {
-        private final int BASE_WIDTH = 800;
-        private final int BASE_HEIGHT = 600;
+        private final int BASE_WIDTH = 1000;
+        private final int BASE_HEIGHT = 700;
 
         public GamePanel() {
             setBackground(new Color(34, 139, 34));
@@ -297,136 +351,91 @@ public class poker extends JFrame {
             Graphics2D g2d = (Graphics2D) g;
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            double scaleWidth = (double) getWidth() / BASE_WIDTH;
-            double scaleHeight = (double) getHeight() / BASE_HEIGHT;
-            double scale = Math.min(scaleWidth, scaleHeight);
-
-            int xOffset = (int) ((getWidth() - (BASE_WIDTH * scale)) / 2);
-            int yOffset = (int) ((getHeight() - (BASE_HEIGHT * scale)) / 2);
-
-            g2d.translate(xOffset, yOffset);
+            double scale = Math.min((double) getWidth() / BASE_WIDTH, (double) getHeight() / BASE_HEIGHT);
+            g2d.translate((getWidth() - BASE_WIDTH * scale) / 2, (getHeight() - BASE_HEIGHT * scale) / 2);
             g2d.scale(scale, scale);
 
-            // DRAW BACKGROUND SPRITE IF AVAILABLE
-            if (tableBgSprite != null) {
-                g2d.drawImage(tableBgSprite, 0, 0, BASE_WIDTH, BASE_HEIGHT, null);
-            }
+            if (tableBgSprite != null) g2d.drawImage(tableBgSprite, 0, 0, BASE_WIDTH, BASE_HEIGHT, null);
 
             g2d.setColor(Color.WHITE);
-            g2d.setFont(new Font("Arial", Font.BOLD, 20));
-            g2d.drawString("Balance: $" + balance, 20, 30);
-            g2d.drawString("Current Bet: $" + currentBet, 20, 60);
+            g2d.setFont(new Font("Arial", Font.BOLD, 22));
+            g2d.drawString("Balance: $" + balance, 20, 40);
+            g2d.drawString("Current Bet: $" + currentBet, 20, 75);
+            g2d.drawString("Multiplier: x" + winMultiplier, 20, 110);
 
-            g2d.setFont(new Font("Arial", Font.BOLD, 30));
+            // SLOT DISPLAY
+            g2d.setColor(new Color(0, 0, 0, 150));
+            g2d.fillRoundRect(750, 20, 220, 120, 20, 20);
+            g2d.setColor(Color.YELLOW);
+            g2d.drawRoundRect(750, 20, 220, 120, 20, 20);
+            g2d.setFont(new Font("Serif", Font.PLAIN, 50));
+            g2d.drawString(currentSlotResult[0] + " " + currentSlotResult[1] + " " + currentSlotResult[2], 775, 90);
+            g2d.setFont(new Font("Arial", Font.BOLD, 14));
+            g2d.drawString(slotMessage, 775, 130);
+
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(new Font("Arial", Font.BOLD, 36));
             int msgWidth = g2d.getFontMetrics().stringWidth(message);
-            g2d.drawString(message, (BASE_WIDTH - msgWidth) / 2, 280);
+            g2d.drawString(message, (BASE_WIDTH - msgWidth) / 2, 320);
 
-            if (!dealerHand.isEmpty() && !playerHand.isEmpty()) {
-                drawHands(g2d);
-            }
+            if (!dealerHand.isEmpty() && !playerHand.isEmpty()) drawHands(g2d);
         }
 
         private void drawHands(Graphics2D g2d) {
-            int cardWidth = 70;
-            int cardSpacing = 80;
+            int cardWidth = 80, cardSpacing = 90;
 
-            // DEALER HAND
-            int dealerDisplayTotal;
-            if (playerTurn) {
-                List<Card> visibleDealerCard = new ArrayList<>();
-                visibleDealerCard.add(dealerHand.get(0));
-                dealerDisplayTotal = getHandValue(visibleDealerCard);
-            } else {
-                dealerDisplayTotal = getHandValue(dealerHand);
-            }
-
+            int dealerVal = playerTurn ? getHandValue(Collections.singletonList(dealerHand.get(0))) : getHandValue(dealerHand);
             g2d.setFont(new Font("Arial", Font.BOLD, 20));
-            String dealerText = "Dealer's Hand: " + dealerDisplayTotal;
-            int dealerTextWidth = g2d.getFontMetrics().stringWidth(dealerText);
-            g2d.drawString(dealerText, (BASE_WIDTH - dealerTextWidth) / 2, 50);
+            g2d.drawString("Dealer: " + (playerTurn ? dealerVal + " + ?" : dealerVal), 450, 60);
 
-            int totalDealerHandWidth = (dealerHand.size() - 1) * cardSpacing + cardWidth;
-            int startXDealer = (BASE_WIDTH - totalDealerHandWidth) / 2;
-
+            int startXDealer = (BASE_WIDTH - (dealerHand.size() * cardSpacing)) / 2;
             for (int i = 0; i < dealerHand.size(); i++) {
-                boolean hideCard = (playerTurn && i == 1);
-                drawCardSprite(g2d, dealerHand.get(i), startXDealer + (i * cardSpacing), 70, hideCard);
+                drawCardSprite(g2d, dealerHand.get(i), startXDealer + (i * cardSpacing), 80, (playerTurn && i == 1));
             }
 
-            // PLAYER HAND
-            int playerDisplayTotal = getHandValue(playerHand);
-            String playerText = "Your Hand: " + playerDisplayTotal;
-            int playerTextWidth = g2d.getFontMetrics().stringWidth(playerText);
-            g2d.drawString(playerText, (BASE_WIDTH - playerTextWidth) / 2, 380);
-
-            int totalPlayerHandWidth = (playerHand.size() - 1) * cardSpacing + cardWidth;
-            int startXPlayer = (BASE_WIDTH - totalPlayerHandWidth) / 2;
-
+            g2d.drawString("Player: " + getHandValue(playerHand), 450, 420);
+            int startXPlayer = (BASE_WIDTH - (playerHand.size() * cardSpacing)) / 2;
             for (int i = 0; i < playerHand.size(); i++) {
-                drawCardSprite(g2d, playerHand.get(i), startXPlayer + (i * cardSpacing), 400, false);
+                drawCardSprite(g2d, playerHand.get(i), startXPlayer + (i * cardSpacing), 450, false);
             }
         }
 
         private void drawCardSprite(Graphics2D g2d, Card card, int x, int y, boolean hidden) {
-            int width = 70;
-            int height = 100;
-
-            // DRAW HIDDEN CARD (BACK)
+            int w = 80, h = 120;
             if (hidden) {
-                if (cardBackSprite != null) {
-                    g2d.drawImage(cardBackSprite, x, y, width, height, null);
-                } else {
-                    g2d.setColor(new Color(178, 34, 34)); // Fallback red back
-                    g2d.fillRoundRect(x, y, width, height, 10, 10);
+                if (cardBackSprite != null) g2d.drawImage(cardBackSprite, x, y, w, h, null);
+                else {
+                    g2d.setColor(new Color(178, 34, 34));
+                    g2d.fillRoundRect(x, y, w, h, 10, 10);
                     g2d.setColor(Color.WHITE);
-                    g2d.drawRoundRect(x, y, width, height, 10, 10);
+                    g2d.drawRoundRect(x, y, w, h, 10, 10);
                 }
                 return;
             }
 
-            // DRAW VISIBLE CARD (FRONT)
-            if (card.frontSprite != null) {
-                g2d.drawImage(card.frontSprite, x, y, width, height, null);
-            } else {
-                // Fallback white card with text
+            if (card.frontSprite != null) g2d.drawImage(card.frontSprite, x, y, w, h, null);
+            else {
                 g2d.setColor(Color.WHITE);
-                g2d.fillRoundRect(x, y, width, height, 10, 10);
+                g2d.fillRoundRect(x, y, w, h, 10, 10);
                 g2d.setColor(Color.BLACK);
-                g2d.drawRoundRect(x, y, width, height, 10, 10);
-
-                // Convert text string back to unicode suit symbol for fallback
-                String symbol = "";
-                if (card.suit.equals("hearts")) { symbol = "♥"; g2d.setColor(Color.RED); }
-                else if (card.suit.equals("diamonds")) { symbol = "♦"; g2d.setColor(Color.RED); }
-                else if (card.suit.equals("clubs")) { symbol = "♣"; g2d.setColor(Color.BLACK); }
-                else if (card.suit.equals("spades")) { symbol = "♠"; g2d.setColor(Color.BLACK); }
-
+                g2d.drawRoundRect(x, y, w, h, 10, 10);
+                String sym = card.suit.equals("hearts") ? "♥" : card.suit.equals("diamonds") ? "♦" : card.suit.equals("clubs") ? "♣" : "♠";
+                if (card.suit.equals("hearts") || card.suit.equals("diamonds")) g2d.setColor(Color.RED);
                 g2d.setFont(new Font("Arial", Font.BOLD, 24));
-                g2d.drawString(card.rank, x + 10, y + 25);
-                g2d.drawString(symbol, x + 10, y + 50);
+                g2d.drawString(card.rank, x + 10, y + 30);
+                g2d.drawString(sym, x + 10, y + 60);
             }
         }
     }
 
-    // --- UPDATED CARD CLASS WITH SPRITE LOADING ---
     private class Card {
-        String suit;
-        String rank;
+        String suit, rank;
         int value;
         Image frontSprite;
 
         public Card(String suit, String rank, int value) {
-            this.suit = suit;
-            this.rank = rank;
-            this.value = value;
-
-            // Try to load a sprite like: "assets/hearts_A.png" or "assets/spades_10.png"
-            try {
-                String fileName = "assets/" + suit + "_" + rank + ".png";
-                frontSprite = ImageIO.read(new File(fileName));
-            } catch (Exception e) {
-                frontSprite = null; // Stays null if file isn't found
-            }
+            this.suit = suit; this.rank = rank; this.value = value;
+            this.frontSprite = getImage("assets/" + suit + "_" + rank + ".png");
         }
     }
 
