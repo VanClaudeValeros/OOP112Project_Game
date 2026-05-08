@@ -7,7 +7,7 @@ import java.util.List;
 import javax.imageio.ImageIO;
 import javax.sound.sampled.*;
 
-public class CoinsAndPoker extends JFrame {
+public class poker extends JFrame {
     private int balance = 100;
     private int currentBet = 0;
     private List<Card> deck;
@@ -25,7 +25,7 @@ public class CoinsAndPoker extends JFrame {
     private Image tableBgSprite;
     private Image cardBackSprite;
 
-    public CoinsAndPoker() {
+    public poker() {
         setTitle("Coins & Poker: Multimedia Edition");
         setSize(900, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -66,6 +66,7 @@ public class CoinsAndPoker extends JFrame {
         add(controlPanel, BorderLayout.SOUTH);
 
         btnPlaceBet.addActionListener(e -> placeCustomBet());
+        txtBetAmount.addActionListener(e -> placeCustomBet());
         btnDeal.addActionListener(e -> attemptDeal());
         btnHit.addActionListener(e -> hit());
         btnStand.addActionListener(e -> stand());
@@ -431,7 +432,7 @@ public class CoinsAndPoker extends JFrame {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            CoinsAndPoker game = new CoinsAndPoker();
+            poker game = new poker();
             game.setVisible(true);
             game.setLocationRelativeTo(null);
         });
