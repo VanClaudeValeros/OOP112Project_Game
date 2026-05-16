@@ -1,4 +1,3 @@
-package src;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -32,7 +31,7 @@ public class PokerGame extends JFrame {
         cardLayout.show(mainPanel, "Menu");
 
         // Start Background Music
-        SoundManager.getInstance().playMusic("sounds/Nior.wav");
+        SoundManager.getInstance().playMusic("sounds/Nior1.wav");
     }
 
     public void showScreen(String screenName) {
@@ -1521,9 +1520,15 @@ class SoundManager {
         if (!musicEnabled) return;
         try {
             stopMusic();
-            java.io.File file = new java.io.File(filePath);
-            if (!file.exists()) return;
-            javax.sound.sampled.AudioInputStream ais = javax.sound.sampled.AudioSystem.getAudioInputStream(file);
+            javax.sound.sampled.AudioInputStream ais;
+            java.net.URL resource = getClass().getClassLoader().getResource(filePath);
+            if (resource != null) {
+                ais = javax.sound.sampled.AudioSystem.getAudioInputStream(resource);
+            } else {
+                java.io.File file = new java.io.File(filePath);
+                if (!file.exists()) return;
+                ais = javax.sound.sampled.AudioSystem.getAudioInputStream(file);
+            }
             musicClip = javax.sound.sampled.AudioSystem.getClip();
             musicClip.open(ais);
             setMusicVolume(musicVolume);
@@ -1544,7 +1549,7 @@ class SoundManager {
 
     public void setMusicEnabled(boolean enabled) {
         this.musicEnabled = enabled;
-        if (enabled) playMusic("sounds/Nior.wav");
+        if (enabled) playMusic("sounds/Nior1.wav");
         else stopMusic();
     }
 
@@ -1561,9 +1566,15 @@ class SoundManager {
         if (!sfxEnabled) return;
         new Thread(() -> {
             try {
-                java.io.File file = new java.io.File(filePath);
-                if (!file.exists()) return;
-                javax.sound.sampled.AudioInputStream ais = javax.sound.sampled.AudioSystem.getAudioInputStream(file);
+                javax.sound.sampled.AudioInputStream ais;
+                java.net.URL resource = getClass().getClassLoader().getResource(filePath);
+                if (resource != null) {
+                    ais = javax.sound.sampled.AudioSystem.getAudioInputStream(resource);
+                } else {
+                    java.io.File file = new java.io.File(filePath);
+                    if (!file.exists()) return;
+                    ais = javax.sound.sampled.AudioSystem.getAudioInputStream(file);
+                }
                 javax.sound.sampled.Clip clip = javax.sound.sampled.AudioSystem.getClip();
                 clip.open(ais);
                 clip.start();
